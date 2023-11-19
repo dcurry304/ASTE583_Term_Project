@@ -1,73 +1,51 @@
-function phi = dynamics(X, const)
+function Xdot = dynamics(X, const)
 % This function is used to integrate both the state and the 
 % state transition matrix of the two body problem.
 % It integrates two equations:
 % 
-% 1) r_ddot = - mu / r^3
+% 1) r_ddot = - const.mu / r^3
 % 2) phi_dot = dx_dot/ dx * phi
 % 
 % Parameters
 % ----------
-% mu
+% const.mu
 % X
 % 
 % Returns
 % -------
 % phi
-% 
-
-% getting the state vector -> [x, y, z, vx, vy, vz] 
+%  
 r = X(1:3);
 v = X(4:6);
 
-x = r(1);
-y = r(2);
-z = r(3);
+%get STM from state vec
+phi = reshape(X(const.sz+1:end),const.sz,const.sz);
 
-x_dot = v(1);
-y_dot = v(2);
-z_dot = v(3);
-
-mu = X(7);
-J2 = X(8);
-CD = X(9);
-
-Area = const.Area;
-H = const.H;
-Re = const.Re;
-r0 = const.r0;
-m = const.Mass;
-theta_dot = const.theta_dot;
-rho0 = const.rho0;
-
-% getting the stm (phi)
-stm_ic = X(19:end);
-
-A = A_Matrix(Area,CD,H,J2,Re,m,mu,r0,rho0,theta_dot,x,x_dot,y,y_dot,z,z_dot);
+A = A_Matrix(const.Area,const.CD,const.H,const.J2,const.Re,const.Mass,const.mu,const.r0,const.rho0,const.theta_dot,r(1),v(1),r(2),v(2),r(3),v(3));
 
 % multiplying A matrix by the initial conditions
-stm_dt = A * reshape(stm_ic,18,18);
+phi_dot = A * phi;
 
 % % % % % % % % % % % % % % Drag Acceleration % % % % % % % % % % % % % %
 % velocity of the S/C wrt. the atmosphere
-va = v - cross(theta_dot*[0 0 1], r).';
+va = v - cross(const.theta_dot*[0 0 1], r).';
 
 % atmospheric density calculation
-rho = rho0 * exp(-(norm(r) - r0) / H);
+rho = const.rho0 * exp(-(norm(r) - const.r0) / const.H);
 
 % calculating drag acceleration
-a_drag = (1/2) * CD * (Area/m) * rho * norm(va) .* va;
+a_drag = (1/2) * const.CD * (const.Area/const.Mass) * rho * norm(va) .* va;
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-ax = -(mu / norm(r)^3)*x ...
-    - (((3*mu) / (2*norm(r)^5))*Re^2*J2*(1-(5*(z/norm(r))^2))*x) ...
+ax = -(const.mu / norm(r)^3)*r(1) ...
+    - (((3*const.mu) / (2*norm(r)^5))*const.Re^2*const.J2*(1-(5*(r(3)/norm(r))^2))*r(1)) ...
     - a_drag(1);
-ay = -(mu / norm(r)^3)*y ...
-    - (((3*mu) / (2*norm(r)^5))*Re^2*J2*(1-(5*(z/norm(r))^2))*y) ...
+ay = -(const.mu / norm(r)^3)*r(2) ...
+    - (((3*const.mu) / (2*norm(r)^5))*const.Re^2*const.J2*(1-(5*(r(3)/norm(r))^2))*r(2)) ...
     - a_drag(2);
-az = -(mu / norm(r)^3)*z ...
-    - (((3*mu) / (2*norm(r)^5))*Re^2*J2*(3-(5*(z/norm(r))^2))*z) ...
+az = -(const.mu / norm(r)^3)*r(3) ...
+    - (((3*const.mu) / (2*norm(r)^5))*const.Re^2*const.J2*(3-(5*(r(3)/norm(r))^2))*r(3)) ...
     - a_drag(3);
 
-phi = [v; ax; ay; az; 0; 0; 0; [0; 0; 0]; [0; 0; 0]; [0; 0; 0]; stm_dt(:)];
+Xdot = [v; ax; ay; az; zeros(12,1); phi_dot(:)];
 end

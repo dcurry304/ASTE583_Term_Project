@@ -1,99 +1,74 @@
 clc;clear;
 
-% defining constants
-constants = struct;
-constants.Area = 3;                     % m^2
-constants.Mass = 970;                   % kg
-constants.rho0 = 3.614e-13;             % kg/m^3
-constants.H = 88667.0;                  % m
-constants.Re = 6378136.3;               % m
-constants.r0 = 700000.0 + constants.Re; % m
-constants.theta_dot = 7.2921158543e-5;  % rad/sec
+const = load_constants();
+
+r0 = [757700.0; 5222607.0; 4851500.0];           % m ECI
+v0 = [2213.21; 4678.34; -5371.30];               % m/s ECI
 
 %load observation data
-obs = load('obs_data.mat');
+load('obs_data.mat');
+obs.theta = const.theta_dot .* obs.time; % rads
 
-%make the groundstation indexing easier
-obs.groundstation(obs.groundstation==101,2) = 10;
-obs.groundstation(obs.groundstation==337,2) = 13;
-obs.groundstation(obs.groundstation==394,2) = 16;
+%make the station indexing easier
+obs.station(obs.station==101,2) = 10;
+obs.station(obs.station==337,2) = 13;
+obs.station(obs.station==394,2) = 16;
 
 % struct to save output data
 out = struct; 
 
-mu = 3.986004415e14;                            % m^3/s^2
-J2 = 1.082626925638815e-3;                      % N/A
-CD = 2;                                         % N/A
-station1 = [-5127510.0; -3794160.0; 0.0];       % m ECEF
-station2 = [3860910.0; 3238490.0; 3898094.0];   % m ECEF
-station3 = [549505.0; -1380872.0; 6182197.0];   % m ECEF
-r = [757700.0; 5222607.0; 4851500.0];           % m ECI
-v = [2213.21; 4678.34; -5371.30];               % m/s ECI
-
 %%%%%%%%%%%%%%%%%%%% initial conditions %%%%%%%%%%%%%%%%%%%%
 % state vector
-STM_IC = eye(18);
-x0 = [r; v; mu; J2; CD; station1; station2; station3];
+STM_IC = eye(const.sz);
+STM_IC = reshape(STM_IC,const.sz*const.sz,1);
+x0 = [r0; v0; const.mu; const.J2; const.CD; const.st1; const.st2; const.st3;STM_IC];
 
 % a-priori state deviation vector
-dx0_a_priori = zeros(18,1);
+dx0_a_priori = zeros(const.sz,1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % a-priori Covariance
-vals = [1e-6 1e-6 1e-6 ...
-    1e-6 1e-6 1e-6 ...
-    1e-20 1e-6 1e-6 ...
-    1e10 1e10 1e10 ...
-    1e-6 1e-6 1e-6 ...
-    1e-6 1e-6 1e-6];
-inv_P0_bar = diag(vals);
+inv_P0_bar = diag([1e-6*ones(6,1);1e-20;1e-6;1e-6;1e10*ones(3,1);1e-6*ones(6,1)]);
 
 % weighing matrix
-W = [1/(.01^2) 0; 0 1/(.001^2)];  % m and m/s  noise
-
-options = odeset('RelTol', 1e-12, 'AbsTol', 1e-12); % seconds
-theta = constants.theta_dot .* obs.time; % rads
-
-iters = 4;
+W = [1/(0.01^2) 0; 0 1/(0.001^2)];  % m and m/s noise
 
 %-% BATCH PROCESSOR
 j = 1;
+iters = 4;
 while j < iters
-    out.state_parameters(j,:) = x0';
-    [t,sols] = ode45(@(t,Y) dynamics(Y, constants), ...
-        obs.time, [x0; STM_IC(:)], options);
-    x = sols(:,1);
-    y = sols(:,2);
-    z = sols(:,3);
-    x_dot = sols(:,4);
-    y_dot = sols(:,5);
-    z_dot = sols(:,6);
-
+    out.state(j,:) = x0(1:const.sz)';
+    %reset STM to Identity every pass
+    x0(const.sz+1:end) = STM_IC;
+    %solve for state vector using ode function
+    [t,X] = ode45(@(t,Y) dynamics(Y, const), obs.time, x0, const.options);
 
     lambda = inv_P0_bar;
     N = inv_P0_bar * dx0_a_priori;
 
     for i = 1:length(obs.time)
 
-        %Second column of grounstation is setup with correct index into x0
-        idx = obs.groundstation(i,2);
-        xs = x0(idx);
-        ys = x0(idx+1);
-        zs = x0(idx+2);
+        %Second column of station is setup with correct index into x0
+        idx = obs.station(i,2);
+        Xs = x0(idx:idx+2);
 
-        H_tilde = H_tilde_xs1(theta(i),constants.theta_dot, ...
-            x(i),x_dot(i),xs, ...
-            y(i),y_dot(i),ys, ...
-            z(i),z_dot(i),zs);
+        H_curl = H_tilde(obs.theta(i),const.theta_dot, ...
+            X(i,1),X(i,4),Xs(1), ...
+            X(i,2),X(i,5),Xs(2), ...
+            X(i,3),X(i,6),Xs(3));
        
         % calculating range
-        rho = range(x(i), y(i), z(i), ...
-            xs, ys, zs, theta(i));
+        rho = sqrt(X(i,1)^2 + X(i,2)^2 + X(i,3)^2 + Xs(1)^2 + Xs(2)^2 + Xs(3)^2 - ...
+                2*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*cos(obs.theta(i)) + ...
+                2*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*sin(obs.theta(i)) - 2*X(i,3)*Xs(3));
         
         % calculating range-rate
-        rho_dot = range_rate(x(i), y(i), z(i), ...
-            x_dot(i), y_dot(i), z_dot(i), ...
-            xs, ys, zs, theta(i), constants.theta_dot);
+        rho_dot = (X(i,1)*X(i,4) + X(i,2)*X(i,5) + X(i,3)*X(i,6) - ...
+                  (X(i,4)*Xs(1) + X(i,5)*Xs(2))*cos(obs.theta(i)) + ...
+                  const.theta_dot*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*sin(obs.theta(i)) + ...
+                  (X(i,4)*Xs(2) - X(i,5)*Xs(1))*sin(obs.theta(i)) + ...
+                  const.theta_dot*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*cos(obs.theta(i)) - ...
+                  X(i,6)*Xs(3)) / rho;
         
         % calculating the observation residuals
         G = [rho; rho_dot];
@@ -102,8 +77,8 @@ while j < iters
         % getting the STM at timestep (i)
         % calculating the state-observation matrix and mapping
         % it to timestep (i) using the STM
-        phi = reshape(sols(i, 19:end), 18, 18);
-        H = H_tilde * phi;
+        phi = reshape(X(i, const.sz+1:end), const.sz, const.sz);
+        H = H_curl * phi;
         
         % updating normal equations
         lambda = lambda + (H.' * W * H);
@@ -122,7 +97,7 @@ while j < iters
     state_deviation  = R\(R'\N);
 
     % updating the initial state vector
-    x0 = x0 + state_deviation;
+    x0(1:const.sz) = x0(1:const.sz) + state_deviation;
 
     % shifting the a priori deviation vector by
     % the state deviation vector
