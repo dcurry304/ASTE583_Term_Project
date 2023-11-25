@@ -35,7 +35,7 @@ W = [1/(0.01^2) 0; 0 1/(0.001^2)];  % m and m/s noise
 
 %-% BATCH PROCESSOR
 j = 1;
-iters = 4;
+iters = 5;
 while j < iters
     out.state(j,:) = x0(1:const.sz)';
     %reset STM to Identity every pass
@@ -43,7 +43,7 @@ while j < iters
     %solve for state vector using ode function
     [t,X] = ode45(@(t,Y) dynamics(Y, const), obs.time, x0, const.options);
 
-    lambda = inv_P0_bar;
+    M = inv_P0_bar;
     N = inv_P0_bar * dx0_a_priori;
 
     for i = 1:length(obs.time)
@@ -78,7 +78,7 @@ while j < iters
         H = H_tilde * phi;
         
         % updating normal equations
-        lambda = lambda + (H.' * W * H);
+        M = M + (H.' * W * H);
         N = N + (H.' * W * y_i);
         
         % saving outputs for post-processing
@@ -89,16 +89,17 @@ while j < iters
     fprintf("rho rms = %f\n",rms(out.rho_residuals(:)))
     fprintf("rho dot rms = %f\n",rms(out.rho_dot_residuals(:)))
 
-    % solving the normal equations
-    R = chol(lambda);
-    state_deviation  = R\(R'\N);
+    %R = chol(M);
+    %state_deviation  = R\(R'\N);
+    % solving the normal equations via Cholesky Decomposition
+    [x_hat,P] = Cholesky_Decomp(M,N);
 
     % updating the initial state vector
-    x0(1:const.sz) = x0(1:const.sz) + state_deviation;
+    x0(1:const.sz) = x0(1:const.sz) + x_hat;
 
     % shifting the a priori deviation vector by
     % the state deviation vector
-    dx0_a_priori = dx0_a_priori - state_deviation;
+    dx0_a_priori = dx0_a_priori - x_hat;
 
     j = j+1;
 end
