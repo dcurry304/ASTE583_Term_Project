@@ -51,12 +51,7 @@ while j < iters
         %Second column of station is setup with correct index into x0
         idx = obs.station(i,2);
         Xs = x0(idx:idx+2);
-
-        H_curl = H_tilde(obs.theta(i),const.theta_dot, ...
-            X(i,1),X(i,4),Xs(1), ...
-            X(i,2),X(i,5),Xs(2), ...
-            X(i,3),X(i,6),Xs(3));
-       
+        
         % calculating range
         rho = sqrt(X(i,1)^2 + X(i,2)^2 + X(i,3)^2 + Xs(1)^2 + Xs(2)^2 + Xs(3)^2 - ...
                 2*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*cos(obs.theta(i)) + ...
@@ -70,6 +65,8 @@ while j < iters
                   const.theta_dot*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*cos(obs.theta(i)) - ...
                   X(i,6)*Xs(3)) / rho;
         
+        H_tilde = H_tilde_matrix(X(i,1:6),Xs,idx,obs.theta(i),rho,rho_dot,const);
+        
         % calculating the observation residuals
         G = [rho; rho_dot];
         y_i = [obs.range(i); obs.range_rate(i)] - G;
@@ -78,7 +75,7 @@ while j < iters
         % calculating the state-observation matrix and mapping
         % it to timestep (i) using the STM
         phi = reshape(X(i, const.sz+1:end), const.sz, const.sz);
-        H = H_curl * phi;
+        H = H_tilde * phi;
         
         % updating normal equations
         lambda = lambda + (H.' * W * H);
