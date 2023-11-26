@@ -3,12 +3,12 @@ function Xdot = dynamics(X, const)
 % state transition matrix of the two body problem.
 % It integrates two equations:
 % 
-% 1) r_ddot = - const.mu / r^3
+% 1) r_ddot = - mu / r^3
 % 2) phi_dot = dx_dot/ dx * phi
 % 
 % Parameters
 % ----------
-% const.mu
+% mu
 % X
 % 
 % Returns
@@ -17,6 +17,10 @@ function Xdot = dynamics(X, const)
 %  
 r = X(1:3);
 v = X(4:6);
+
+mu = X(7);
+J2 = X(8);
+CD = X(9);
 
 %get STM from state vec
 phi = reshape(X(const.sz+1:end),const.sz,const.sz);
@@ -34,16 +38,16 @@ va = v - cross(const.theta_dot*[0 0 1], r).';
 rho = const.rho0 * exp(-(norm(r) - const.r0) / const.H);
 
 % calculating drag acceleration
-a_drag = (1/2) * const.CD * (const.Area/const.Mass) * rho * norm(va) .* va;
+a_drag = (1/2) * CD * (const.Area/const.Mass) * rho * norm(va) .* va;
 
-ax = -(const.mu / norm(r)^3)*r(1) ...
-    - (((3*const.mu) / (2*norm(r)^5))*const.Re^2*const.J2*(1-(5*(r(3)/norm(r))^2))*r(1)) ...
+ax = -(mu / norm(r)^3)*r(1) ...
+    - (((3*mu) / (2*norm(r)^5))*const.Re^2*J2*(1-(5*(r(3)/norm(r))^2))*r(1)) ...
     - a_drag(1);
-ay = -(const.mu / norm(r)^3)*r(2) ...
-    - (((3*const.mu) / (2*norm(r)^5))*const.Re^2*const.J2*(1-(5*(r(3)/norm(r))^2))*r(2)) ...
+ay = -(mu / norm(r)^3)*r(2) ...
+    - (((3*mu) / (2*norm(r)^5))*const.Re^2*J2*(1-(5*(r(3)/norm(r))^2))*r(2)) ...
     - a_drag(2);
-az = -(const.mu / norm(r)^3)*r(3) ...
-    - (((3*const.mu) / (2*norm(r)^5))*const.Re^2*const.J2*(3-(5*(r(3)/norm(r))^2))*r(3)) ...
+az = -(mu / norm(r)^3)*r(3) ...
+    - (((3*mu) / (2*norm(r)^5))*const.Re^2*J2*(3-(5*(r(3)/norm(r))^2))*r(3)) ...
     - a_drag(3);
 
 Xdot = [v; ax; ay; az; zeros(12,1); phi_dot(:)];

@@ -45,7 +45,7 @@ H_tilde(2,4) = (X(1) - Xs(1)*cos_theta + Xs(2)*sin_theta)/rho;
 H_tilde(2,5) = (X(2) - Xs(2)*cos_theta - Xs(1)*sin_theta)/rho;
  
 %d_rhodot/d_dot
-H_tilde(2,6) = (X(3)-Xs(3))/rho^2;
+H_tilde(2,6) = (X(3)-Xs(3))/rho;
  
 %d_rhodot/d_xsi
 H_tilde(2,idx) = (-X(4)*cos_theta + const.theta_dot*X(1)*sin_theta - X(5)*sin_theta - const.theta_dot*X(2)*cos_theta)/rho ...

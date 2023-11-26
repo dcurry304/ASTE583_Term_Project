@@ -1,5 +1,6 @@
 clc;clear;
 
+%load in constants 
 const = load_constants();
 
 r0 = [757700.0; 5222607.0; 4851500.0];           % m ECI
@@ -47,7 +48,6 @@ while j < iters
     N = inv_P0_bar * dx0_a_priori;
 
     for i = 1:length(obs.time)
-
         %Second column of station is setup with correct index into x0
         idx = obs.station(i,2);
         Xs = x0(idx:idx+2);
@@ -65,6 +65,7 @@ while j < iters
                   const.theta_dot*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*cos(obs.theta(i)) - ...
                   X(i,6)*Xs(3)) / rho;
         
+        %Compute H_tilde matrix
         H_tilde = H_tilde_matrix(X(i,1:6),Xs,idx,obs.theta(i),rho,rho_dot,const);
         
         % calculating the observation residuals
@@ -72,9 +73,9 @@ while j < iters
         y_i = [obs.range(i); obs.range_rate(i)] - G;
         
         % getting the STM at timestep (i)
+        phi = reshape(X(i, const.sz+1:end), const.sz, const.sz);
         % calculating the state-observation matrix and mapping
         % it to timestep (i) using the STM
-        phi = reshape(X(i, const.sz+1:end), const.sz, const.sz);
         H = H_tilde * phi;
         
         % updating normal equations
@@ -92,14 +93,14 @@ while j < iters
     %R = chol(M);
     %state_deviation  = R\(R'\N);
     % solving the normal equations via Cholesky Decomposition
-    [x_hat,P] = Cholesky_Decomp(M,N);
+    [x_hat_0,P] = Cholesky_Decomp(M,N);
 
     % updating the initial state vector
-    x0(1:const.sz) = x0(1:const.sz) + x_hat;
+    x0(1:const.sz) = x0(1:const.sz) + x_hat_0;
 
     % shifting the a priori deviation vector by
     % the state deviation vector
-    dx0_a_priori = dx0_a_priori - x_hat;
+    dx0_a_priori = dx0_a_priori - x_hat_0;
 
     j = j+1;
 end
