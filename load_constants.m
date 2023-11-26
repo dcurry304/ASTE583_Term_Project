@@ -13,9 +13,6 @@ constants.Re = 6378136.3;               % m
 constants.r0 = 700000.0 + constants.Re; % m
 constants.theta_dot = 7.2921158543e-5;  % rad/sec
 
-constants.mu = 3.986004415e14;                            % m^3/s^2
-constants.J2 = 1.082626925638815e-3;                      % N/A
-constants.CD = 2;                                         % N/A
 constants.st1 = [-5127510.0; -3794160.0; 0.0];       % m ECEF
 constants.st2 = [3860910.0; 3238490.0; 3898094.0];   % m ECEF
 constants.st3 = [549505.0; -1380872.0; 6182197.0]; 

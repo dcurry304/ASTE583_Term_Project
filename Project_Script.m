@@ -15,93 +15,36 @@ obs.station(obs.station==101,2) = 10;
 obs.station(obs.station==337,2) = 13;
 obs.station(obs.station==394,2) = 16;
 
-% struct to save output data
-out = struct; 
-
 %%%%%%%%%%%%%%%%%%%% initial conditions %%%%%%%%%%%%%%%%%%%%
-% state vector
-STM_IC = eye(const.sz);
-STM_IC = reshape(STM_IC,const.sz*const.sz,1);
-x0 = [r0; v0; const.mu; const.J2; const.CD; const.st1; const.st2; const.st3;STM_IC];
+mu = 3.986004415e14;                            % m^3/s^2
+J2 = 1.082626925638815e-3;                      % N/A
+CD = 2;                                         % N/A
+ic.x0 = [r0; v0; mu; J2; CD; const.st1; const.st2; const.st3;reshape(eye(const.sz),const.sz*const.sz,1)];
 
 % a-priori state deviation vector
-dx0_a_priori = zeros(const.sz,1);
+ic.dx0_a_priori = zeros(const.sz,1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % a-priori Covariance
-inv_P0_bar = diag([1e-6*ones(6,1);1e-20;1e-6;1e-6;1e10*ones(3,1);1e-6*ones(6,1)]);
+ic.inv_P0_bar = diag([1e-6*ones(6,1);1e-20;1e-6;1e-6;1e10*ones(3,1);1e-6*ones(6,1)]);
 
 % weighing matrix
-W = [1/(0.01^2) 0; 0 1/(0.001^2)];  % m and m/s noise
+ic.W = [1/(0.01^2) 0; 0 1/(0.001^2)];  % m and m/s noise
 
-%-% BATCH PROCESSOR
-j = 1;
-iters = 5;
-while j < iters
-    out.state(j,:) = x0(1:const.sz)';
-    %reset STM to Identity every pass
-    x0(const.sz+1:end) = STM_IC;
-    %solve for state vector using ode function
-    [t,X] = ode45(@(t,Y) dynamics(Y, const), obs.time, x0, const.options);
+fprintf("---------Range and range rate observations -----------\n");
+%run case with both range and range rate observations
+out = batch_processor(const,obs,ic,1);
 
-    M = inv_P0_bar;
-    N = inv_P0_bar * dx0_a_priori;
+% weighing matrix
+ic.W = 1/(0.01^2);  % m noise
 
-    for i = 1:length(obs.time)
-        %Second column of station is setup with correct index into x0
-        idx = obs.station(i,2);
-        Xs = x0(idx:idx+2);
-        
-        % calculating range
-        rho = sqrt(X(i,1)^2 + X(i,2)^2 + X(i,3)^2 + Xs(1)^2 + Xs(2)^2 + Xs(3)^2 - ...
-                2*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*cos(obs.theta(i)) + ...
-                2*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*sin(obs.theta(i)) - 2*X(i,3)*Xs(3));
-        
-        % calculating range-rate
-        rho_dot = (X(i,1)*X(i,4) + X(i,2)*X(i,5) + X(i,3)*X(i,6) - ...
-                  (X(i,4)*Xs(1) + X(i,5)*Xs(2))*cos(obs.theta(i)) + ...
-                  const.theta_dot*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*sin(obs.theta(i)) + ...
-                  (X(i,4)*Xs(2) - X(i,5)*Xs(1))*sin(obs.theta(i)) + ...
-                  const.theta_dot*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*cos(obs.theta(i)) - ...
-                  X(i,6)*Xs(3)) / rho;
-        
-        %Compute H_tilde matrix
-        H_tilde = H_tilde_matrix(X(i,1:6),Xs,idx,obs.theta(i),rho,rho_dot,const);
-        
-        % calculating the observation residuals
-        G = [rho; rho_dot];
-        y_i = [obs.range(i); obs.range_rate(i)] - G;
-        
-        % getting the STM at timestep (i)
-        phi = reshape(X(i, const.sz+1:end), const.sz, const.sz);
-        % calculating the state-observation matrix and mapping
-        % it to timestep (i) using the STM
-        H = H_tilde * phi;
-        
-        % updating normal equations
-        M = M + (H.' * W * H);
-        N = N + (H.' * W * y_i);
-        
-        % saving outputs for post-processing
-        out.rho_residuals(i) = y_i(1);
-        out.rho_dot_residuals(i) = y_i(2);
-    end
-    
-    fprintf("rho rms = %f\n",rms(out.rho_residuals(:)))
-    fprintf("rho dot rms = %f\n",rms(out.rho_dot_residuals(:)))
+%run case with only range observations
+fprintf("---------Range only observations -----------\n");
+out2 = batch_processor(const,obs,ic,2);
 
-    %R = chol(M);
-    %state_deviation  = R\(R'\N);
-    % solving the normal equations via Cholesky Decomposition
-    [x_hat_0,P] = Cholesky_Decomp(M,N);
+% weighing matrix
+ic.W = 1/(0.001^2);  % m/s noise
 
-    % updating the initial state vector
-    x0(1:const.sz) = x0(1:const.sz) + x_hat_0;
-
-    % shifting the a priori deviation vector by
-    % the state deviation vector
-    dx0_a_priori = dx0_a_priori - x_hat_0;
-
-    j = j+1;
-end
-
+fprintf("---------Range-rate only observations -----------\n");
+%run case with only range rate observations
+out3 = batch_processor(const,obs,ic,3);
