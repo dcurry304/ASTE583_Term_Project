@@ -1,4 +1,4 @@
-clc;clear;
+close all;clear;
 
 %load in constants 
 const = load_constants();
@@ -48,3 +48,19 @@ ic.W = 1/(0.001^2);  % m/s noise
 fprintf("---------Range-rate only observations -----------\n");
 %run case with only range rate observations
 out3 = batch_processor(const,obs,ic,3);
+
+%Plot results
+for i = 1:length(out.rho_dot_residuals(:,1))
+    figure; 
+    sgtitle(sprintf('Residuals for iteration %d',i));
+    subplot(2,1,1); hold on;
+    xlabel('Time (s)'); ylabel('Range Residuals (m)');
+    plot(obs.time,out.rho_residuals(i,:))
+    plot(obs.time,out2.rho_residuals(i,:))
+    legend('Range + Range-Rate obs','Range only obs');
+    subplot(2,1,2); hold on;
+    xlabel('Time (s)'); ylabel('Range-rate Residuals (m)');
+    plot(obs.time,out.rho_dot_residuals(i,:))
+    plot(obs.time,out3.rho_dot_residuals(i,:))
+    legend('Range + Range-Rate obs','Range-Rate only obs');
+end

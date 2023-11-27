@@ -8,7 +8,7 @@ W = ic.W;
 
 %-% BATCH PROCESSOR
 j = 1;
-iters = 4;
+iters = 5;
 while j < iters
     %reset STM to Identity every pass
     x0(const.sz+1:end) = reshape(eye(const.sz),const.sz*const.sz,1);
@@ -63,24 +63,14 @@ while j < iters
         
         % saving outputs for post-processing
         if obs_opt == 1 
-            out.rho_residuals(i) = y_i(1);
-            out.rho_dot_residuals(i) = y_i(2);
+            out.rho_residuals(j,i) = y_i(1);
+            out.rho_dot_residuals(j,i) = y_i(2);
         elseif obs_opt == 2
-            out.rho_residuals(i) = y_i(1);
+            out.rho_residuals(j,i) = y_i(1);
         else
-            out.rho_dot_residuals(i) = y_i(1);
+            out.rho_dot_residuals(j,i) = y_i(1);
         end
     end
-    
-    if obs_opt == 1 || obs_opt == 2
-        fprintf("rho rms = %f\n",rms(out.rho_residuals(:)))
-    end
-    if obs_opt == 1 || obs_opt == 3
-        fprintf("rho dot rms = %f\n",rms(out.rho_dot_residuals(:)))
-    end
-
-    %R = chol(M);
-    %state_deviation  = R\(R'\N);
     % solving the normal equations via Cholesky Decomposition
     [x_hat_0,P0] = Cholesky_Decomp(M,N);
 
@@ -94,7 +84,17 @@ while j < iters
     %save outputs
     out.x_hat0(j,:) = x0(1:const.sz)';
     out.P0(j,:,:) = P0;
-
+    out.sigmas(j,:) = diag(P0);
+    
+    fprintf("Best estimate initial state:  r = [%.3e %.3e %.3e] m, v = [%.3e %.3e %.3e] m/s\n",out.x_hat0(j,1:6))
+    fprintf("Best estimate initial sigmas: r = [%.3e %.3e %.3e] m, v = [%.3e %.3e %.3e] m/s\n",out.sigmas(j,1:6))
+    if obs_opt == 1 || obs_opt == 2
+        fprintf("rho rms = %f\n",rms(out.rho_residuals(j,:)))
+    end
+    if obs_opt == 1 || obs_opt == 3
+        fprintf("rho dot rms = %f\n",rms(out.rho_dot_residuals(j,:)))
+    end
+    
     j = j+1;
 end
 end
