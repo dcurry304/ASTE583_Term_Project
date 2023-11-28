@@ -50,5 +50,5 @@ az = -(mu / norm(r)^3)*r(3) ...
     - (((3*mu) / (2*norm(r)^5))*const.Re^2*J2*(3-(5*(r(3)/norm(r))^2))*r(3)) ...
     - a_drag(3);
 
-Xdot = [v; ax; ay; az; zeros(12,1); phi_dot(:)];
+Xdot = [v; ax;ay;az; zeros(12,1); phi_dot(:)];
 end
