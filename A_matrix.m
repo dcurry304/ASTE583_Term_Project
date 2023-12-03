@@ -76,7 +76,7 @@ A(5,4) = -drag_term*(X(5)-const.theta_dot*X(1))*(X(4) + const.theta_dot*X(2))/va
 A(5,5) = -drag_term*(X(5)-const.theta_dot*X(1))^2/va - drag_term*va;
 
 %d_ydotdot/d_zdot
-A(5,6) = -drag_term*X(6)*(X(4)-const.theta_dot*X(1))/va;
+A(5,6) = -drag_term*X(6)*(X(5)-const.theta_dot*X(1))/va;
 
 %d_ydotdot/d_mu
 A(5,7) = -X(2)/r^3*(1-3/2*J2*(const.Re/r)^2*(5*(X(3)/r)^2-1));
@@ -95,7 +95,7 @@ A(6,1) = 3*mu*X(1)*X(3)/r^5 *(1 -5/2 *J2*(const.Re/r)^2*(7*(X(3)/r)^2-3)) ...
 %d_zdotdot/d_y
 A(6,2) = 3*mu*X(2)*X(3)/r^5 *(1 -5/2 *J2*(const.Re/r)^2*(7*(X(3)/r)^2-3)) ...
     + drag_term*va*X(6)*X(2)/(r*const.H) - ...
-    drag_term*X(6)*(const.theta_dot^2 *X(1) + const.theta_dot^2*X(5))/va;
+    drag_term*X(6)*(const.theta_dot^2 *X(4) + const.theta_dot^2*X(2))/va;
 
 %d_zdotdot/d_z
 A(6,3) = -mu/r^3*(1 - 3/2*J2*(const.Re/r)^2 *(5*(X(3)/r)^2 -3)) ...
@@ -106,7 +106,7 @@ A(6,3) = -mu/r^3*(1 - 3/2*J2*(const.Re/r)^2 *(5*(X(3)/r)^2 -3)) ...
 A(6,4) = -drag_term*X(6)*(X(4)+const.theta_dot*X(2))/va;
 
 %d_zdotdot/d_ydot
-A(6,5) = -drag_term*X(6)*(X(5)+const.theta_dot*X(1))/va;
+A(6,5) = -drag_term*X(6)*(X(5)-const.theta_dot*X(1))/va;
 
 %d_zdotdot/d_zdot
 A(6,6) = -drag_term*X(6)^2/va - drag_term*va;

@@ -1,9 +1,9 @@
-function Xdot = dynamics(X, const)
+function Xdot = dynamics(~,X, const)
 % This function is used to integrate both the state and the 
 % state transition matrix of the two body problem.
 % It integrates two equations:
 % 
-% 1) r_ddot = - mu / r^3
+% 1) r_ddot = - mu / r^3 TODO: fix this 
 % 2) phi_dot = dx_dot/ dx * phi
 % 
 % Parameters

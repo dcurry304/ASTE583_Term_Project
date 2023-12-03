@@ -13,7 +13,7 @@ while j < iters
     %reset STM to Identity every pass
     x0(const.sz+1:end) = reshape(eye(const.sz),const.sz*const.sz,1);
     %solve for state vector using ode function
-    [t,X] = ode45(@(t,Y) dynamics(Y, const), obs.time, x0, const.options);
+    [~,X] = ode45(@(t,Y)dynamics(t,Y, const), obs.time, x0, const.options);
 
     M = inv_P0_bar;
     N = inv_P0_bar * dx0_a_priori;
@@ -21,15 +21,20 @@ while j < iters
     for i = 1:length(obs.time)
         %Second column of station is setup with correct index into x0
         idx = obs.station(i,2);
-        Xs = x0(idx:idx+2);
+        %coordinates for station 1 is exact, others are estimated
+        if idx == 10
+            Xs = const.st1;
+        else
+            Xs = X(i,idx:idx+2);
+        end
         
         % calculating range
-        rho = sqrt(X(i,1)^2 + X(i,2)^2 + X(i,3)^2 + Xs(1)^2 + Xs(2)^2 + Xs(3)^2 - ...
+        rho = sqrt(norm(X(i,1:3))^2 + norm(Xs)^2 - ...
                 2*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*cos(obs.theta(i)) + ...
                 2*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*sin(obs.theta(i)) - 2*X(i,3)*Xs(3));
         
         % calculating range-rate
-        rho_dot = (X(i,1)*X(i,4) + X(i,2)*X(i,5) + X(i,3)*X(i,6) - ...
+        rho_dot = ( dot(X(i,1:3),X(i,4:6)) - ...
                   (X(i,4)*Xs(1) + X(i,5)*Xs(2))*cos(obs.theta(i)) + ...
                   const.theta_dot*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*sin(obs.theta(i)) + ...
                   (X(i,4)*Xs(2) - X(i,5)*Xs(1))*sin(obs.theta(i)) + ...
@@ -84,6 +89,7 @@ while j < iters
     %save outputs
     out.x_hat0(j,:) = x0(1:const.sz)';
     out.P0(j,:,:) = P0;
+    out.traceP0(j) = trace(P0);
     out.sigmas(j,:) = diag(P0);
     
     fprintf("Best estimate initial state:  r = [%.3e %.3e %.3e] m, v = [%.3e %.3e %.3e] m/s\n",out.x_hat0(j,1:6))
