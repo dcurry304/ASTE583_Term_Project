@@ -1,4 +1,21 @@
 function out = batch_processor(const,obs,ic,obs_opt)
+% This function performs the batch filtering algorithm to determine the
+% best estimate state at t0.
+% 
+% Inputs
+% ----------
+% const: structure of constants
+% obs: structure of observation data
+% ic: structure of initial conditions for this batch filter computation
+% obs_opt: observation option to calculate:
+%   1: use range and range-rate observations
+%   2: use range only observations
+%   3. use range-rate only observations
+% 
+% Outputs
+% -------
+% out: output structure with batch filter results
+%  
 
 %unload initial conditions structure to make it easy to access variables
 x0 = ic.x0;
@@ -15,6 +32,7 @@ while j < iters
     %solve for state vector using ode function
     [~,X] = ode45(@(t,Y)dynamics(t,Y, const), obs.time, x0, const.options);
 
+    %use a priori estimate in normal equation
     M = inv_P0_bar;
     N = inv_P0_bar * dx0_a_priori;
 
@@ -28,12 +46,12 @@ while j < iters
             Xs = X(i,idx:idx+2);
         end
         
-        % calculating range
+        % calculating range [m]
         rho = sqrt(norm(X(i,1:3))^2 + norm(Xs)^2 - ...
                 2*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*cos(obs.theta(i)) + ...
                 2*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*sin(obs.theta(i)) - 2*X(i,3)*Xs(3));
         
-        % calculating range-rate
+        % calculating range-rate [m/s]
         rho_dot = ( dot(X(i,1:3),X(i,4:6)) - ...
                   (X(i,4)*Xs(1) + X(i,5)*Xs(2))*cos(obs.theta(i)) + ...
                   const.theta_dot*(X(i,1)*Xs(1) + X(i,2)*Xs(2))*sin(obs.theta(i)) + ...
@@ -46,14 +64,14 @@ while j < iters
         
         % calculating the observation residuals
         if obs_opt == 1
-            G = [rho; rho_dot];
-            y_i = [obs.range(i); obs.range_rate(i)] - G;
+            G = [rho; rho_dot]; %[m,m/s]
+            y_i = [obs.range(i); obs.range_rate(i)] - G; %[m,m/s]
         elseif obs_opt == 2
-            G = rho;
-            y_i = obs.range(i) - G;
+            G = rho;%[m]
+            y_i = obs.range(i) - G;%[m]
         else
-            G = rho_dot;
-            y_i = obs.range_rate(i) - G;
+            G = rho_dot;%[m/s]
+            y_i = obs.range_rate(i) - G;%[m/s]
         end
         
         % getting the STM at timestep (i)
@@ -68,22 +86,23 @@ while j < iters
         
         % saving outputs for post-processing
         if obs_opt == 1 
-            out.rho_residuals(j,i) = y_i(1);
-            out.rho_dot_residuals(j,i) = y_i(2);
+            out.rho_residuals(j,i) = y_i(1); %[m]
+            out.rho_dot_residuals(j,i) = y_i(2); %[m/s]
         elseif obs_opt == 2
-            out.rho_residuals(j,i) = y_i(1);
+            out.rho_residuals(j,i) = y_i(1);%[m]
         else
-            out.rho_dot_residuals(j,i) = y_i(1);
+            out.rho_dot_residuals(j,i) = y_i(1);%[m/s]
         end
-    end
+    end %time loop
+    
     % solving the normal equations via Cholesky Decomposition
     [x_hat_0,P0] = Cholesky_Decomp(M,N);
 
-    % updating the initial state vector
+    % updating the initial state vector for next iteration
     x0(1:const.sz) = x0(1:const.sz) + x_hat_0;
 
     % shifting the a priori deviation vector by
-    % the state deviation vector
+    % the state deviation vector for next iteration
     dx0_a_priori = dx0_a_priori - x_hat_0;
     
     %save outputs
@@ -92,6 +111,7 @@ while j < iters
     out.traceP0(j) = trace(P0);
     out.sigmas(j,:) = diag(P0);
     
+    %print results
     fprintf("Best estimate initial state:  r = [%.3e %.3e %.3e] m, v = [%.3e %.3e %.3e] m/s\n",out.x_hat0(j,1:6))
     fprintf("Best estimate initial sigmas: r = [%.3e %.3e %.3e] m, v = [%.3e %.3e %.3e] m/s\n",out.sigmas(j,1:6))
     if obs_opt == 1 || obs_opt == 2

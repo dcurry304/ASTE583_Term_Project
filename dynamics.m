@@ -1,23 +1,25 @@
 function Xdot = dynamics(~,X, const)
 % This function is used to integrate both the state and the 
-% state transition matrix of the two body problem.
+% state transition matrix of the 2 body problem with drag and J2 effects.
 % It integrates two equations:
 % 
-% 1) r_ddot = - mu / r^3 TODO: fix this 
-% 2) phi_dot = dx_dot/ dx * phi
+% 1) a = a_2body + a_J2 + a_drag
+% 2) phi_dot = A * phi
 % 
-% Parameters
+% Inputs
 % ----------
-% mu
-% X
+% X: 342x1 state vector, where phi is 18x18 reshaped into 324x1
+%   [x y z xdot ydot zdot ? J2 CD Xs1 Ys1 Zs1 Xs2 Ys2 Zs2 Xs3 Ys3 Zs3 phi]^T
+%
+% const: structure of constants
 % 
-% Returns
+% Outputs
 % -------
-% phi
+% Xdot: 342x1 state derivative vector
 %  
+
 r = X(1:3);
 v = X(4:6);
-
 mu = X(7);
 J2 = X(8);
 CD = X(9);

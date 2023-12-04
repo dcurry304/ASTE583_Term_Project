@@ -1,16 +1,32 @@
 function A = A_matrix(X, const)
+% This function calculates the A matrix for the 2 body problem with
+% drag and J2 effects. 
+% 
+% Inputs
+% ----------
+% X: 342x1 state vector, where phi is 18x18 reshaped into 324x1
+%   [x y z xdot ydot zdot ? J2 CD Xs1 Ys1 Zs1 Xs2 Ys2 Zs2 Xs3 Ys3 Zs3 phi]^T
+% const: structure of constants
+% 
+% Outputs
+% -------
+% A: 18x18 A matrix, filled with zeros except for
+% specified members defined below
+%
 
 r = norm(X(1:3));
 v = X(4:6);
 mu = X(7);
 J2 = X(8);
 CD = X(9);
+
 % velocity of the S/C wrt. the atmosphere
-va = norm(v - cross(const.theta_dot*[0 0 1], X(1:3)).');
+va = norm(v - cross(const.theta_dot*[0 0 1], X(1:3)).'); %[m/s]
 
 % atmospheric density calculation
-rho = const.rho0 * exp(-(norm(r) - const.r0) / const.H);
+rho = const.rho0 * exp(-(r - const.r0) / const.H); % [kg/m^3]
 
+%helper variable to save calculations
 drag_term = 1/2*CD*(const.Area/const.Mass)*rho;
 
 A = zeros(18);
