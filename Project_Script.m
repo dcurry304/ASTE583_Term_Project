@@ -88,21 +88,31 @@ fprintf("Kalman filter!\n");
 outK = Kalman_filter(const,obs,ic,1);
 
 figure; 
-sgtitle(sprintf('Residuals for iteration %d',i));
+sgtitle('Kalman Filter Position deviation');
 subplot(3,1,1); hold on;
-plot(obs.time,outK.X(:,1))
-plot(obs.time,outK.x_hat(:,1))
-legend('Reference Traj', 'Kalman');
-xlabel('Time (s)'); ylabel('X position (m)');
-
+xlabel('Time (s)'); ylabel('\deltaX (m)');
 subplot(3,1,2); hold on;
-plot(obs.time,outK.X(:,2))
-plot(obs.time,outK.x_hat(:,2))
-legend('Reference Traj', 'Kalman');
-xlabel('Time (s)'); ylabel('Y position (m)');
-
+xlabel('Time (s)'); ylabel('\deltaY (m)');
 subplot(3,1,3); hold on;
-plot(obs.time,outK.X(:,3))
-plot(obs.time,outK.x_hat(:,3))
-legend('Reference Traj', 'Kalman');
-xlabel('Time (s)'); ylabel('Z position (m)');
+xlabel('Time (s)'); ylabel('\deltaZ (m)');
+for i=1:3
+    subplot(3,1,i); hold on;
+    plot(obs.time,outK.x_hat(:,i)-out.X(:,i))
+    plot(obs.time,outK.dx_hat(:,i))
+    legend('Batch', 'Reference');
+end
+
+figure; 
+sgtitle('Kalman Filter Velocity deviation');
+subplot(3,1,1); hold on;
+xlabel('Time (s)'); ylabel('\deltaXdot (m)');
+subplot(3,1,2); hold on;
+xlabel('Time (s)'); ylabel('\deltaYdot (m)');
+subplot(3,1,3); hold on;
+xlabel('Time (s)'); ylabel('\deltaZdot (m)');
+for i=4:6
+    subplot(3,1,i-3); hold on;
+    plot(obs.time,outK.x_hat(:,i)-out.X(:,i))
+    plot(obs.time,outK.dx_hat(:,i))
+    legend('Batch', 'Reference');
+end

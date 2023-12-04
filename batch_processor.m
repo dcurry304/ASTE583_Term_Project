@@ -123,4 +123,10 @@ while j < iters
     
     j = j+1;
 end
+
+%Propagate the best estimate initial state through to tf
+x0(1:const.sz) = out.x_hat0(4,:)';
+x0(const.sz+1:end) = reshape(eye(const.sz),const.sz*const.sz,1);
+[~,X] = ode45(@(t,Y)dynamics(t,Y, const), obs.time, x0, const.options);
+out.X = X(:,1:const.sz);
 end

@@ -1,16 +1,16 @@
 function out = Kalman_filter(const,obs,ic,obs_opt)
 
 %unload initial conditions structure to make it easy to access variables
-x_hat(1,:) = ic.x0(1:const.sz) + ic.dx0_a_priori;
-out.x_hat(1,:) =x_hat(1,:);
+dx_hat = ic.dx0_a_priori;
+out.x_hat(1,:) =ic.x0(1:const.sz);
 R = inv(ic.W);
 P = ic.P0_bar;
 
 %-% Sequential Processor
-
 %solve for state vector using ode function
 [~,X] = ode45(@(t,Y)dynamics(t,Y, const), obs.time, ic.x0, const.options);
 for i = 2:length(obs.time)
+
     %Second column of station is setup with correct index into x0
     idx = obs.station(i,2);
     %coordinates for station 1 is exact, others are estimated
@@ -32,13 +32,12 @@ for i = 2:length(obs.time)
               (X(i,4)*Xs(2) - X(i,5)*Xs(1))*sin(obs.theta(i)) + ...
               const.theta_dot*(X(i,1)*Xs(2) - X(i,2)*Xs(1))*cos(obs.theta(i)) - ...
               X(i,6)*Xs(3)) / rho;
-
-    
+          
     % getting the STM at timestep (i)
     phi = reshape(X(i, const.sz+1:end), const.sz, const.sz);
     
     % time update
-    x_bar = phi*x_hat(i-1,:)';
+    x_bar = phi*dx_hat(1:const.sz);
     P_bar = phi*P*phi.';
     
     % calculating the observation residuals
@@ -64,11 +63,12 @@ for i = 2:length(obs.time)
     K = P_bar*H_tilde.' * inv(H_tilde * P_bar * H_tilde.' + R);
     
     % measurement update
-    x_hat(i,:) = x_bar + K*(y_i-(H_tilde*x_bar));
+    dx_hat = x_bar + K*(y_i-(H_tilde*x_bar));
     P = (eye(18) - K*H_tilde)*P_bar;
     
     %save outputs
-    out.x_hat(i,:) = X(i,1:const.sz)' + x_hat(i,1:const.sz)';
+    out.dx_hat(i,:) = dx_hat(1:const.sz)';
+    out.x_hat(i,:) = X(i,1:const.sz)' + dx_hat(1:const.sz);
     
     out.P(i,:,:) = P;
     out.traceP(i) = trace(P);
