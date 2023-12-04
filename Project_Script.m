@@ -80,3 +80,29 @@ for i = 1:length(out.rho_dot_residuals(:,1))
     plot(obs.time,out3.rho_dot_residuals(i,:))
     legend('Range + Range-Rate obs','Range-Rate only obs');
 end
+
+% weighing matrix
+ic.W = [1/(0.01^2) 0; 0 1/(0.001^2)];  % m and m/s noise
+%extra orbit determination task
+fprintf("Kalman filter!\n");
+outK = Kalman_filter(const,obs,ic,1);
+
+figure; 
+sgtitle(sprintf('Residuals for iteration %d',i));
+subplot(3,1,1); hold on;
+plot(obs.time,outK.X(:,1))
+plot(obs.time,outK.x_hat(:,1))
+legend('Reference Traj', 'Kalman');
+xlabel('Time (s)'); ylabel('X position (m)');
+
+subplot(3,1,2); hold on;
+plot(obs.time,outK.X(:,2))
+plot(obs.time,outK.x_hat(:,2))
+legend('Reference Traj', 'Kalman');
+xlabel('Time (s)'); ylabel('Y position (m)');
+
+subplot(3,1,3); hold on;
+plot(obs.time,outK.X(:,3))
+plot(obs.time,outK.x_hat(:,3))
+legend('Reference Traj', 'Kalman');
+xlabel('Time (s)'); ylabel('Z position (m)');
